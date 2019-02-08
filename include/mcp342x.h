@@ -1,16 +1,38 @@
 /*
-Craft Metrics
+    Craft Metrics
 
-This product includes software developed by the
-Craft Metrics (https://craftmetrics.ca/).
+    This product includes software developed by
+    Craft Metrics (https://craftmetrics.ca/).
+
+    MIT License
+    Copyright (c) 2018 Craft Metrics
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
 */
 
-#ifndef CM_ESP32_MCP342X_H
-#define CM_ESP32_MCP342X_H
+#ifndef ESP32_MCP342X_H
+#define ESP32_MCP342X_H
 
 #include <stdint.h>
 #include <esp_system.h>
 #include <esp_log.h>
+#include "smbus.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -21,8 +43,7 @@ extern "C"
 * MACROS & ENUMS
 *----------------------------------------------------------*/
 
-/**
- * I2C Address of device
+/** I2C Address of device
  * MCP3421, MCP3425 & MCP3426 are factory programed for any of 0x68 thru 0x6F
  * MCP3422, MCP3423, MCP3424, MCP3427 & MCP3428 addresses are controlled by address lines A0 and A1
  * each address line can be low (GND), high (VCC) or floating (FLT)
@@ -91,7 +112,7 @@ typedef enum MCP342xSampleRate
     MCP342X_SRATE_12BIT = 0x00, // 0b 0000 0000
     MCP342X_SRATE_14BIT = 0x04, // 0b 0000 0100
     MCP342X_SRATE_16BIT = 0x08, // 0b 0000 1000
-    MCP342X_SRATE_18BIT = 0x0C, // 0b 0000 1000
+    MCP342X_SRATE_18BIT = 0x0C, // 0b 0000 1100
     MCP342X_SRATE_MASK = 0x0C,
 } mcp342x_sample_rate_t;
 
@@ -106,7 +127,7 @@ typedef enum MCP342xGain
     MCP342X_GAIN_MASK = 0x03,
 } mcp342x_gain_t;
 
-typedef enum MCP342xGeneralCalls
+typedef enum mcp342x_general_calls
 {
     MCP342X_GC_START = 0x00,
     MCP342X_GC_LATCH = 0x04,
@@ -114,8 +135,7 @@ typedef enum MCP342xGeneralCalls
     MCP342X_GC_CONVERSION = 0x08
 } mcp342x_general_call_t;
 
-/**
- * Configuration Register values of the MCP342x device
+/** Configuration Register values of the MCP342x device
  * Initialized with default settings partially according to
  * datasheet Section 4.1
  */
@@ -127,13 +147,12 @@ typedef struct MCP342xConfig
     mcp342x_gain_t gain = MCP342X_GAIN_1X;
 } mcp342x_config_t;
 
-/**
- * Struct ofr controlling a MCP342x device
+/** Struct for controlling a MCP342x device
  * smbus_info contains the i2c address of the device
  */
-typedef struct MCP342xInfo
+typedef struct MCP342xInfo_t
 {
-    bool init:1;
+    bool init : 1;
     smbus_info_t *smbus_info;
     uint8_t config;
 } mcp342x_info_t;
@@ -148,14 +167,14 @@ typedef struct MCP342xInfo
  *
  * @return Pointer to new device info instance, or NULL if it cannot be created.
  */
-mcp342x_info_t *MCP342xMalloc(void);
+mcp342x_info_t *mcp342x_malloc(void);
 
 /**
  * @brief Delete an existing MCP342x info instance.
  *
  * @param[in,out] Pointer to MCP342x info instance that will be freed and set to NULL.
  */
-void MCP342xFree(mcp342x_info_t **mcp342x_info);
+void mcp342x_free(mcp342x_info_t **mcp342x_info);
 
 /**
  * @brief Initialise a MCP342x instance with the specified SMBus information.
@@ -165,13 +184,13 @@ void MCP342xFree(mcp342x_info_t **mcp342x_info);
  * @param[in] in_config Configuration bitmask. 
  * @return ESP_OK if successful, otherwise an error constant.
  */
-esp_err_t MCP342xInit(mcp342x_info_t *mcp342x_info, smbus_info_t *smbus_info, mcp342x_config_t in_config);
+esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info, smbus_info_t *smbus_info, mcp342x_config_t in_config);
 
 /**
  * Specific call to the device samples the logic status 
  * of the Adr0 and Adr1 pins in the general call events
  */
-esp_err_t MCP342xGeneralCall(const smbus_info_t *smbus_info_ptr, mcp342x_general_call_t call);
+esp_err_t mcp342x_general_call(const smbus_info_t *smbus_info_ptr, mcp342x_general_call_t call);
 
 /**
  * @brief Trigger a conversion on the MCP342x instance
@@ -179,7 +198,7 @@ esp_err_t MCP342xGeneralCall(const smbus_info_t *smbus_info_ptr, mcp342x_general
  * @param[in] mcp342x_info Pointer to MCP342x info instance.
  * @return ESP_OK if successful, otherwise an error constant.
  */
-esp_err_t MCP342xStartConversion(const mcp342x_info_t *mcp342x_info_ptr);
+esp_err_t mcp342x_start_conversion(const mcp342x_info_t *mcp342x_info_ptr);
 
 /**
  * @brief Read the result of the conversion
@@ -189,7 +208,7 @@ esp_err_t MCP342xStartConversion(const mcp342x_info_t *mcp342x_info_ptr);
  * @param[in] i16_result_ptr Pointer to result info variable.
  * @return status_byte
  */
-uint8_t MCP342xGetResult16(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int16_t *i16_result_ptr);
+uint8_t mcp342x_get_result_16(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int16_t *i16_result_ptr);
 
 /**
  * @brief Read the result of the conversion
@@ -199,7 +218,7 @@ uint8_t MCP342xGetResult16(const mcp342x_info_t *mcp342x_info_ptr, const smbus_i
  * @param[in] i32_result_ptr Pointer to result info variable. 
  * @return status_byte
  */
-uint8_t MCP342xGetResult18(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int32_t *i32_result_ptr);
+uint8_t mcp342x_get_result_18(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int32_t *i32_result_ptr);
 
 /**
  * @brief Read the result of the conversion once
@@ -209,7 +228,7 @@ uint8_t MCP342xGetResult18(const mcp342x_info_t *mcp342x_info_ptr, const smbus_i
  * @param[in] i16_result_ptr Pointer to result info variable.
  * @return status_byte
  */
-uint8_t MCP342xGetResultSingle16(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int16_t *i16_result_ptr);
+uint8_t mcp342x_get_result_single_16(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int16_t *i16_result_ptr);
 
 /**
  * @brief Read the result of the conversion once
@@ -219,8 +238,7 @@ uint8_t MCP342xGetResultSingle16(const mcp342x_info_t *mcp342x_info_ptr, const s
  * @param[in] i32_result_ptr Pointer to result info variable.
  * @return status_byte
  */
-uint8_t MCP342xGetResultSingle18(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int32_t *i32_result_ptr);
-
+uint8_t mcp342x_get_result_single_18(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int32_t *i32_result_ptr);
 
 #ifdef __cplusplus
 }
@@ -232,15 +250,21 @@ class MCP342x
 {
   public:
     MCP342x(mcp342x_address_t in_address);
-    void Configure(mcp342x_config_t in_config);
-    uint8_t GetConfig(void);
-    esp_err_t StartConversion();
-  
+    ~MCP342x();
+    esp_err_t Init(i2c_port_t in_i2c_master, mcp342x_config_t in_config);
+    esp_err_t SetConfig(mcp342x_config_t in_config);
+    esp_err_t StartConversion(void);
+    uint8_t GetResult();
+    uint8_t GetResultSingle();
+    mcp342x_address_t GetAddress(void);
+    mcp342x_info_t *GetInfoPtr(void);
+
   private:
     mcp342x_address_t address;
-    uint8_t config;
+    mcp342x_info_t *mcp342x_info;
+    int32_t result;
 };
 
 #endif
 
-#endif // CM_ESP32_MCP342X_H
+#endif // ESP32_MCP342X_H
