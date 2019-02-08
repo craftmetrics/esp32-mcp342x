@@ -1,0 +1,5 @@
+### CUSTOM ###
+.vscode
+
+### ESP32-IDF ###
+build
