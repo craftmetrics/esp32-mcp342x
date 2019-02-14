@@ -141,10 +141,10 @@ typedef enum mcp342x_general_calls
  */
 typedef struct MCP342xConfig
 {
-    mcp342x_channel_t channel = MCP342X_CHANNEL_1;
-    mcp342x_conversion_mode_t conversion_mode = MCP342X_MODE_ONESHOT;
-    mcp342x_sample_rate_t sample_rate = MCP342X_SRATE_12BIT;
-    mcp342x_gain_t gain = MCP342X_GAIN_1X;
+    mcp342x_channel_t channel;
+    mcp342x_conversion_mode_t conversion_mode;
+    mcp342x_sample_rate_t sample_rate;
+    mcp342x_gain_t gain;
 } mcp342x_config_t;
 
 /** Struct for controlling a MCP342x device
@@ -187,10 +187,26 @@ void mcp342x_free(mcp342x_info_t **mcp342x_info);
 esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info, smbus_info_t *smbus_info, mcp342x_config_t in_config);
 
 /**
- * Specific call to the device samples the logic status 
- * of the Adr0 and Adr1 pins in the general call events
+ * @brief Specific call to the device samples the logic status 
+ *        of the Adr0 and Adr1 pins in the general call events
+ * 
+ * @param[in] smbus_info_ptr Pointer to smbus info instance.
+ * @param[in] call General call to write.
+ * 
+ * @return ESP_OK if successful, otherwise an error constant.
  */
 esp_err_t mcp342x_general_call(const smbus_info_t *smbus_info_ptr, mcp342x_general_call_t call);
+
+/**
+ * @brief Write to the MCP342x configuration register
+ *
+ * @param[in] mcp342x_info_ptr Pointer to MCP342x info instance.
+ * @param[in] smbus_info_ptr Pointer to smbus info instance.
+ * @param[in] in_config Configurations to write.
+ * 
+ * @return ESP_OK if successful, otherwise an error constant.
+ */
+esp_err_t mcp342x_write_config_reg(mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, mcp342x_config_t in_config);
 
 /**
  * @brief Trigger a conversion on the MCP342x instance
@@ -198,7 +214,7 @@ esp_err_t mcp342x_general_call(const smbus_info_t *smbus_info_ptr, mcp342x_gener
  * @param[in] mcp342x_info Pointer to MCP342x info instance.
  * @return ESP_OK if successful, otherwise an error constant.
  */
-esp_err_t mcp342x_start_conversion(const mcp342x_info_t *mcp342x_info_ptr);
+esp_err_t mcp342x_start_conversion(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr);
 
 /**
  * @brief Read the result of the conversion
@@ -242,29 +258,6 @@ uint8_t mcp342x_get_result_single_18(const mcp342x_info_t *mcp342x_info_ptr, con
 
 #ifdef __cplusplus
 }
-#endif
-
-#ifdef __cplusplus
-
-class MCP342x
-{
-  public:
-    MCP342x(mcp342x_address_t in_address);
-    ~MCP342x();
-    esp_err_t Init(i2c_port_t in_i2c_master, mcp342x_config_t in_config);
-    esp_err_t SetConfig(mcp342x_config_t in_config);
-    esp_err_t StartConversion(void);
-    uint8_t GetResult();
-    uint8_t GetResultSingle();
-    mcp342x_address_t GetAddress(void);
-    mcp342x_info_t *GetInfoPtr(void);
-
-  private:
-    mcp342x_address_t address;
-    mcp342x_info_t *mcp342x_info;
-    int32_t result;
-};
-
 #endif
 
 #endif // ESP32_MCP342X_H
