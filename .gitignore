@@ -1,6 +1,7 @@
 ### CUSTOM ###
 .vscode
 lib/
+main/
 Makefile
 
 ### ESP32-IDF ###
