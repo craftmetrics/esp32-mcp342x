@@ -26,8 +26,8 @@ void mcp3424_init(void)
     // Set device configuration
     mcp342x_config_t config;
     config.channel = MCP342X_CHANNEL_1;
-    config.conversion_mode = MCP342X_MODE_CONTINUOUS;
-    config.sample_rate = MCP342X_SRATE_16BIT;
+    config.conversion_mode = MCP342X_MODE_ONESHOT;
+    config.sample_rate = MCP342X_SRATE_18BIT;
     config.gain = MCP342X_GAIN_1X;
 
     err = mcp3424.Init(I2C_MASTER_NUM, config);
@@ -69,7 +69,8 @@ extern "C" void app_main()
 
     while (true)
     {
-        ESP_LOGI(TAG, "CH1: Result: %.2f", ex::mcp3424.Read());
+        ex::mcp3424.StartNewConversion();
+        ESP_LOGI(TAG, "Result: %.2f", ex::mcp3424.Read());
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
 }

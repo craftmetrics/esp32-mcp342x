@@ -34,6 +34,9 @@
 
 static const char *TAG = "mcp342x";
 
+/*-----------------------------------------------------------
+* I2C C API
+*----------------------------------------------------------*/
 static bool _is_init(const mcp342x_info_t *mcp342x_info_ptr)
 {
     bool ok = false;
@@ -130,47 +133,62 @@ esp_err_t mcp342x_start_new_conversion(mcp342x_info_t *mcp342x_info_ptr, const s
 
 mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, double &result)
 {
-    int32_t i32val;
-    uint8_t buffer[3] = {};
-    uint8_t status;
+    uint8_t buffer[4] = {};
+    int32_t i32;
 
-    smbus_send_byte(smbus_info_ptr, mcp342x_info_ptr->config | MCP342X_CNTRL_TRIGGER_CONVERSION);
-
-    smbus_receive_byte(smbus_info_ptr, &buffer[0]);
-    smbus_receive_byte(smbus_info_ptr, &buffer[1]);
-
-    if ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK) == MCP342X_SRATE_18BIT)
+    do
     {
-        smbus_receive_byte(smbus_info_ptr, &buffer[2]);
+        smbus_i2c_read_block(smbus_info_ptr, mcp342x_info_ptr->config, buffer, 4);
+        ESP_LOGV(TAG, "%02x %02x %02x %02x", buffer[0], buffer[1], buffer[2], buffer[3]);
+    } while ((buffer[3] & MCP342X_CNTRL_MASK) == MCP342X_CNTRL_RESULT_NOT_UPDATED);
+
+    ESP_LOGI(TAG, "Conversion Completed");
+
+    switch ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK))
+    {
+    case MCP342X_SRATE_12BIT:
+    {
+        buffer[0] &= 0x0F;
+        break;
+    }
+    case MCP342X_SRATE_14BIT:
+    {
+        buffer[0] &= 0x3F;
+        break;
+    }
+    case MCP342X_SRATE_16BIT:
+    {
+        buffer[0] &= 0xFF;
+        break;
+    }
+    case MCP342X_SRATE_18BIT:
+    {
+        buffer[0] &= 0x3F;
+        break;
+    }
+    default:
+    {
+        break;
+    }
     }
 
-    smbus_receive_byte(smbus_info_ptr, &status);
-
-    ESP_LOGI(TAG, "1st hexbyte = %02x", buffer[0]);
-    ESP_LOGI(TAG, "2nd hexbyte = %02x", buffer[1]);
-    ESP_LOGI(TAG, "3rd hexbyte = %02x", buffer[2]);
-    ESP_LOGI(TAG, "Cfg hexbyte = %02x", status);
-
-    if ((status & MCP342X_CNTRL_RESULT_NOT_UPDATED) != 0)
-        return MCP342X_STATUS_IN_PROGRESS;
-
     if ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK) == MCP342X_SRATE_18BIT)
     {
-        i32val = ~(((buffer[0] & 0x80) << 16) - 1) | buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+        i32 = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2]; // MSB / byte1 | byte2 | byte3 / LSB
     }
     else
     {
-        i32val = (buffer[0] << 8) | buffer[1];
+        i32 = (buffer[0] << 8) | buffer[1]; // MSB / byte1 | byte2 / LSB
     }
 
-    ESP_LOGI(TAG, "i32val hexbyte = %08x", i32val);
+    ESP_LOGI(TAG, "i32 %08x | %d", i32, i32);
 
-    result = 0.001 * i32val / (1 << ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK) << 1)) / (1 << (mcp342x_info_ptr->config & MCP342X_GAIN_MASK));
+    // result = 0.001 * i32 / (1 << ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK) << 1)) / (1 << (mcp342x_info_ptr->config & MCP342X_GAIN_MASK));
 
-    if (result > 2.048)
-        return MCP342X_STATUS_OVERFLOW;
-    if (result < -2.048)
-        return MCP342X_STATUS_UNDERFLOW;
+    // if (result > 2.048)
+    //     return MCP342X_STATUS_OVERFLOW;
+    // if (result < -2.048)
+    //     return MCP342X_STATUS_UNDERFLOW;
 
     return MCP342X_STATUS_OK;
 }
