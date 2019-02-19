@@ -245,7 +245,6 @@ class MCP342x
     esp_err_t StartNewConversion(void);
     esp_err_t StartNewConversion(mcp342x_channel_t in_channel);
     double Read(void);
-    double Read(mcp342x_channel_t in_channel);
     mcp342x_address_t GetAddress(void);
     mcp342x_info_t *GetInfoPtr(void);
 

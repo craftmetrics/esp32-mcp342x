@@ -62,10 +62,8 @@ extern "C" void app_main()
 {
     ESP_LOGI(TAG, "MCP3424 C++ Example");
 
-    ESP_LOGI(TAG, "Before init heap size: %d", esp_get_free_heap_size());
     ex::i2c_master_init();
     ex::mcp3424_init();
-    ESP_LOGI(TAG, "After init heap size: %d", esp_get_free_heap_size());
 
     while (true)
     {

@@ -133,8 +133,8 @@ esp_err_t mcp342x_start_new_conversion(mcp342x_info_t *mcp342x_info_ptr, const s
 
 mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, double &result)
 {
-    uint8_t buffer[4] = {};
     int32_t i32;
+    uint8_t buffer[4] = {};
 
     do
     {
@@ -144,37 +144,46 @@ mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_in
 
     ESP_LOGI(TAG, "Conversion Completed");
 
+    /**
+     * Choose the LSB voltage value and discard repeated MSB
+     */
+    double LSB = 0;
+    uint8_t MSB = 0x80 & buffer[0];
     switch ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK))
     {
     case MCP342X_SRATE_12BIT:
     {
+        LSB = 0.001;
         buffer[0] &= 0x0F;
         break;
     }
     case MCP342X_SRATE_14BIT:
     {
+        LSB = 0.000250;
         buffer[0] &= 0x3F;
         break;
     }
     case MCP342X_SRATE_16BIT:
     {
+        LSB = 0.0000625;
         buffer[0] &= 0xFF;
         break;
     }
     case MCP342X_SRATE_18BIT:
     {
+        LSB = 0.000015625;
         buffer[0] &= 0x3F;
-        break;
-    }
-    default:
-    {
         break;
     }
     }
 
+    /**
+     * Arrage bytes to form output code
+     * MSB <| Byte1 | Byte2 |[ Byte3 ]|> LSB
+     */
     if ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK) == MCP342X_SRATE_18BIT)
     {
-        i32 = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2]; // MSB / byte1 | byte2 | byte3 / LSB
+        i32 = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2]; 
     }
     else
     {
@@ -183,12 +192,28 @@ mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_in
 
     ESP_LOGI(TAG, "i32 %08x | %d", i32, i32);
 
-    // result = 0.001 * i32 / (1 << ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK) << 1)) / (1 << (mcp342x_info_ptr->config & MCP342X_GAIN_MASK));
+    /**
+     * Based on the sign, calculate the input voltage signal
+     * MSB = 0 (Positive) 
+     * MSB = 1 (Negative)
+     */
+    if (MSB == 0)
+    {
+        result = i32 * (LSB / (1 << (mcp342x_info_ptr->config & MCP342X_GAIN_MASK)));
+    }
+    else
+    {
+        result = (~(i32) + 1) * (LSB / (1 << (mcp342x_info_ptr->config & MCP342X_GAIN_MASK)));
+    }
 
-    // if (result > 2.048)
-    //     return MCP342X_STATUS_OVERFLOW;
-    // if (result < -2.048)
-    //     return MCP342X_STATUS_UNDERFLOW;
+    if (result > 2.048)
+    {
+        return MCP342X_STATUS_OVERFLOW;
+    }
+    if (result < -2.048)
+    {
+        return MCP342X_STATUS_UNDERFLOW;
+    }
 
     return MCP342X_STATUS_OK;
 }
@@ -253,17 +278,6 @@ esp_err_t MCP342x::StartNewConversion(mcp342x_channel_t in_channel)
 
 double MCP342x::Read(void)
 {
-    mcp342x_read_result(this->mcp342x_info,
-                        this->mcp342x_info->smbus_info,
-                        this->result);
-
-    return this->GetResult();
-}
-
-double MCP342x::Read(mcp342x_channel_t in_channel)
-{
-    this->StartNewConversion(in_channel);
-
     mcp342x_read_result(this->mcp342x_info,
                         this->mcp342x_info->smbus_info,
                         this->result);
