@@ -77,7 +77,7 @@ void c_app_main()
     {
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         mcp342x_start_new_conversion(mcp342x_info, smbus_info, MCP342X_CHANNEL_1);
-        mcp342x_read_result_16(mcp342x_info, smbus_info, &result16);
+        mcp342x_read_result(mcp342x_info, smbus_info, &result16);
         ESP_LOGI(TAG, "Result: %d\n", result16);
     }
 }
