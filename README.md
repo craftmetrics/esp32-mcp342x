@@ -1,6 +1,6 @@
 # ESP32-MCP342X
 
-ESP32 compatiple library for MCP342X series of ADCs with i2c interface.
+ESP-IDF compatible library for using the MCP342X series of ADCs with i2c interface.
 
 ## Dependencies
 
