@@ -1,9 +1,9 @@
 ### CUSTOM ###
-# .vscode
+.vscode
 lib/
 main/
 Makefile
 
 ### ESP32-IDF ###
 build/
-sdkconfig.*
+sdkconfig*
