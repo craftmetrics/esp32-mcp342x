@@ -34,6 +34,9 @@
 
 static const char *TAG = "mcp342x";
 
+/*-----------------------------------------------------------
+* I2C C API
+*----------------------------------------------------------*/
 static bool _is_init(const mcp342x_info_t *mcp342x_info_ptr)
 {
     bool ok = false;
@@ -89,11 +92,6 @@ void mcp342x_free(mcp342x_info_t **mcp342x_info_ptr_ptr)
     }
 }
 
-esp_err_t mcp342x_general_call(const smbus_info_t *smbus_info_ptr, mcp342x_general_call_t call)
-{
-    return smbus_write_byte(smbus_info_ptr, MCP342X_GC_START, call);
-}
-
 esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info_ptr, smbus_info_t *smbus_info_ptr, mcp342x_config_t in_config)
 {
     esp_err_t err = ESP_FAIL;
@@ -109,7 +107,7 @@ esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info_ptr, smbus_info_t *smbus_inf
                                     in_config.sample_rate);
         // Test connection
         ESP_LOGD(TAG, "send mcp342x_info config %p", &mcp342x_info_ptr->config);
-        err = smbus_send_byte(smbus_info_ptr, mcp342x_info_ptr->config | MCP342X_CNTRL_NOTHING);
+        err = smbus_send_byte(smbus_info_ptr, mcp342x_info_ptr->config);
     }
     else
     {
@@ -118,52 +116,115 @@ esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info_ptr, smbus_info_t *smbus_inf
     return err;
 }
 
-esp_err_t mcp342x_write_config_reg(mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, mcp342x_config_t in_config)
+void mcp342x_set_config(mcp342x_info_t *mcp342x_info_ptr, mcp342x_config_t in_config)
+{
+    mcp342x_info_ptr->config = (in_config.channel |
+                                in_config.conversion_mode |
+                                in_config.gain |
+                                in_config.sample_rate);
+    return;
+}
+
+esp_err_t mcp342x_general_call(const mcp342x_info_t *mcp342x_info_ptr, mcp342x_general_call_t call)
+{
+    return smbus_write_byte(mcp342x_info_ptr->smbus_info, MCP342X_GC_START, call);
+}
+
+esp_err_t mcp342x_start_new_conversion(const mcp342x_info_t *mcp342x_info_ptr)
 {
     esp_err_t err = ESP_FAIL;
     if (_is_init(mcp342x_info_ptr))
     {
-        mcp342x_info_ptr->config = (in_config.channel |
-                                    in_config.conversion_mode |
-                                    in_config.gain |
-                                    in_config.sample_rate);
-
-        err = smbus_send_byte(smbus_info_ptr, mcp342x_info_ptr->config);
+        err = smbus_send_byte(mcp342x_info_ptr->smbus_info, mcp342x_info_ptr->config | MCP342X_CNTRL_TRIGGER_CONVERSION);
     }
     return err;
 }
 
-esp_err_t mcp342x_start_new_conversion(mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, mcp342x_channel_t in_channel)
+mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_info_ptr, double *result)
 {
-    esp_err_t err = ESP_FAIL;
-    if (_is_init(mcp342x_info_ptr))
+    int32_t i32;
+    uint8_t buffer[4] = {};
+
+    do
     {
-        mcp342x_info_ptr->config = (in_channel |
-                                    (mcp342x_info_ptr->config & MCP342X_MODE_MASK) |
-                                    (mcp342x_info_ptr->config & MCP342X_GAIN_MASK) |
-                                    (mcp342x_info_ptr->config & MCP342X_SRATE_MASK));
+        smbus_i2c_read_block(mcp342x_info_ptr->smbus_info, mcp342x_info_ptr->config, buffer, 4);
+        ESP_LOGV(TAG, "%02x %02x %02x %02x", buffer[0], buffer[1], buffer[2], buffer[3]);
+    } while ((buffer[3] & MCP342X_CNTRL_MASK) == MCP342X_CNTRL_RESULT_NOT_UPDATED);
 
-        err = smbus_send_byte(smbus_info_ptr, mcp342x_info_ptr->config | MCP342X_CNTRL_TRIGGER);
+    ESP_LOGI(TAG, "Conversion Completed");
+
+    /**
+     * Choose the LSB voltage value and discard repeated MSB
+     */
+    double LSB = 0;
+    uint8_t MSB = 0x80 & buffer[0];
+    switch ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK))
+    {
+    case MCP342X_SRATE_12BIT:
+    {
+        LSB = 0.001;
+        buffer[0] &= 0x0F;
+        break;
     }
-    return err;
-}
+    case MCP342X_SRATE_14BIT:
+    {
+        LSB = 0.000250;
+        buffer[0] &= 0x3F;
+        break;
+    }
+    case MCP342X_SRATE_16BIT:
+    {
+        LSB = 0.0000625;
+        buffer[0] &= 0xFF;
+        break;
+    }
+    case MCP342X_SRATE_18BIT:
+    {
+        LSB = 0.000015625;
+        buffer[0] &= 0x3F;
+        break;
+    }
+    }
 
-uint8_t mcp342x_read_result(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, double *result_ptr)
-{
-    uint8_t status_byte = 0;
-    uint8_t buffer[4];
+    /**
+     * Arrage bytes to form output code
+     * MSB <| Byte1 | Byte2 |[ Byte3 ]|> LSB
+     */
+    if ((mcp342x_info_ptr->config & MCP342X_SRATE_MASK) == MCP342X_SRATE_18BIT)
+    {
+        i32 = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
+    }
+    else
+    {
+        i32 = (buffer[0] << 8) | buffer[1]; // MSB / byte1 | byte2 / LSB
+    }
 
-    ESP_ERROR_CHECK(smbus_receive_byte(smbus_info_ptr, &buffer[0]));
-    ESP_ERROR_CHECK(smbus_receive_byte(smbus_info_ptr, &buffer[1]));
-    ESP_ERROR_CHECK(smbus_receive_byte(smbus_info_ptr, &buffer[2]));
-    ESP_ERROR_CHECK(smbus_receive_byte(smbus_info_ptr, &buffer[3]));
+    ESP_LOGI(TAG, "i32 %08x | %d", i32, i32);
 
-    ESP_LOGI(TAG, "buffer[0] hexbyte = %02x", buffer[0]);
-    ESP_LOGI(TAG, "buffer[1] hexbyte = %02x", buffer[1]);
-    ESP_LOGI(TAG, "buffer[2] hexbyte = %02x", buffer[2]);
-    ESP_LOGI(TAG, "buffer[3] hexbyte = %02x", buffer[3]);
+    /**
+     * Based on the sign, calculate the input voltage signal
+     * MSB = 0 (Positive) 
+     * MSB = 1 (Negative)
+     */
+    if (MSB == 0)
+    {
+        *result = i32 * (LSB / (1 << (mcp342x_info_ptr->config & MCP342X_GAIN_MASK)));
+    }
+    else
+    {
+        *result = (~(i32) + 1) * (LSB / (1 << (mcp342x_info_ptr->config & MCP342X_GAIN_MASK)));
+    }
 
-    return status_byte;
+    if (*result > 2.048)
+    {
+        return MCP342X_STATUS_OVERFLOW;
+    }
+    if (*result < -2.048)
+    {
+        return MCP342X_STATUS_UNDERFLOW;
+    }
+
+    return MCP342X_STATUS_OK;
 }
 
 /*-----------------------------------------------------------
@@ -195,28 +256,34 @@ esp_err_t MCP342x::Init(i2c_port_t in_i2c_master, mcp342x_config_t in_config)
                         in_config);
 }
 
-esp_err_t MCP342x::SetConfig(mcp342x_config_t in_config)
+esp_err_t MCP342x::GeneralCall(mcp342x_general_call_t call)
 {
-    return mcp342x_write_config_reg(this->mcp342x_info,
-                                    this->mcp342x_info->smbus_info,
-                                    in_config);
+    return mcp342x_general_call(this->mcp342x_info, call);
+}
+
+void MCP342x::SetConfig(mcp342x_config_t in_config)
+{
+    return mcp342x_set_config(this->mcp342x_info, in_config);
+}
+
+esp_err_t MCP342x::StartNewConversion(void)
+{
+    return mcp342x_start_new_conversion(this->mcp342x_info);
 }
 
 esp_err_t MCP342x::StartNewConversion(mcp342x_channel_t in_channel)
 {
-    return mcp342x_start_new_conversion(this->mcp342x_info,
-                                        this->mcp342x_info->smbus_info,
-                                        in_channel);
+    /**
+     * Swap out the channel bits by first zeroing and then OR with new channel
+     */
+    this->mcp342x_info->config = ((this->mcp342x_info->config & ~MCP342X_CHANNEL_MASK) | (in_channel & MCP342X_CHANNEL_MASK));
+    return mcp342x_start_new_conversion(this->mcp342x_info);
 }
 
-double MCP342x::Read(mcp342x_channel_t in_channel)
+double MCP342x::Read(void)
 {
-    this->StartNewConversion(in_channel);
+    mcp342x_read_result(this->mcp342x_info, &this->result);
 
-        mcp342x_read_result(this->mcp342x_info,
-                            this->mcp342x_info->smbus_info,
-                            &this->result);
-                            
     return this->GetResult();
 }
 
