@@ -16,7 +16,7 @@ static const char *TAG = "mcp342x_example";
 
 smbus_info_t *smbus_info;
 mcp342x_info_t *mcp342x_info;
-int16_t result16;
+double result;
 
 static void i2c_master_init(void)
 {
@@ -57,8 +57,8 @@ static void mcp3424_init(void)
     ESP_ERROR_CHECK(err);
 }
 
-// void app_main()
-void c_app_main()
+void app_main()
+// void c_app_main()
 {
     esp_err_t err;
 
@@ -70,14 +70,14 @@ void c_app_main()
 
     ESP_LOGI(TAG, "Config after init: %02x", mcp342x_info->config);
 
-    err = mcp342x_general_call(smbus_info, MCP342X_GC_RESET);
+    err = mcp342x_general_call(mcp342x_info, MCP342X_GC_RESET);
     ESP_ERROR_CHECK(err);
 
     while (true)
     {
         vTaskDelay(2000 / portTICK_PERIOD_MS);
-        mcp342x_start_new_conversion(mcp342x_info, smbus_info, MCP342X_CHANNEL_1);
-        mcp342x_read_result(mcp342x_info, smbus_info, &result16);
-        ESP_LOGI(TAG, "Result: %d\n", result16);
+        mcp342x_start_new_conversion(mcp342x_info);
+        mcp342x_read_result(mcp342x_info, &result);
+        ESP_LOGI(TAG, "Result: %f\n", result);
     }
 }

@@ -194,6 +194,14 @@ void mcp342x_free(mcp342x_info_t **mcp342x_info);
 esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info, smbus_info_t *smbus_info, mcp342x_config_t in_config);
 
 /**
+ * @brief Set the configuration values for the MCP342x instance
+ *
+ * @param[in] mcp342x_info Pointer to MCP342x info instance.
+ * @param[in] in_config Configuration bitmask.
+ */
+void mcp342x_set_config(mcp342x_info_t *mcp342x_info_ptr, mcp342x_config_t in_config); 
+
+/**
  * @brief Specific call to the device samples the logic status 
  *        of the Adr0 and Adr1 pins in the general call events
  * 
@@ -202,7 +210,7 @@ esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info, smbus_info_t *smbus_info, m
  * 
  * @return ESP_OK if successful, otherwise an error constant.
  */
-esp_err_t mcp342x_general_call(const smbus_info_t *smbus_info_ptr, mcp342x_general_call_t call);
+esp_err_t mcp342x_general_call(const mcp342x_info_t *mcp342x_info_ptr, mcp342x_general_call_t call);
 
 /**
  * @brief Trigger a conversion on the MCP342x instance
@@ -212,7 +220,7 @@ esp_err_t mcp342x_general_call(const smbus_info_t *smbus_info_ptr, mcp342x_gener
  * 
  * @return ESP_OK if successful, otherwise an error constant.
  */
-esp_err_t mcp342x_start_new_conversion(mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, mcp342x_channel_t in_channel);
+esp_err_t mcp342x_start_new_conversion(const mcp342x_info_t *mcp342x_info_ptr);
 
 /**
  * @brief Read the result of the conversion
@@ -223,7 +231,7 @@ esp_err_t mcp342x_start_new_conversion(mcp342x_info_t *mcp342x_info_ptr, const s
  * 
  * @return Conversion Status
  */
-mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_info_ptr, const smbus_info_t *smbus_info_ptr, int16_t *i16_result_ptr);
+mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_info_ptr, double *result);
 
 #ifdef __cplusplus
 }

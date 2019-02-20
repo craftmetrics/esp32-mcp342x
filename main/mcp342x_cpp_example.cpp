@@ -57,8 +57,8 @@ static void i2c_master_init(void)
 
 } // namespace ex
 
-extern "C" void app_main()
-// extern "C" void cpp_app_main()
+// extern "C" void app_main()
+extern "C" void cpp_app_main()
 {
     ESP_LOGI(TAG, "MCP3424 C++ Example");
 
