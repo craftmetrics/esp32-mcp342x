@@ -1,8 +1,8 @@
 ### CUSTOM ###
 # .vscode
-# lib/
-# main/
-# Makefile
+lib/
+main/
+Makefile
 
 ### ESP32-IDF ###
 build/
