@@ -151,7 +151,8 @@ mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_in
         ESP_LOGV(TAG, "%02x %02x %02x %02x", buffer[0], buffer[1], buffer[2], buffer[3]);
     } while ((buffer[3] & MCP342X_CNTRL_MASK) == MCP342X_CNTRL_RESULT_NOT_UPDATED);
 
-    ESP_LOGI(TAG, "Done: %02x %02x %02x | %02x %02x",buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+    ESP_LOGD(TAG, "Conversion done");
+    ESP_LOGD(TAG, "Buffer: %02x %02x %02x | %02x %02x",buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
 
     /**
      * Choose the LSB voltage value and discard repeated MSB
@@ -199,7 +200,7 @@ mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_in
         i32 = (buffer[0] << 8) | buffer[1]; // MSB / byte1 | byte2 / LSB
     }
 
-    ESP_LOGI(TAG, "i32 %08x | %d", i32, i32);
+    ESP_LOGD(TAG, "i32: %08x | %d", i32, i32);
 
     /**
      * Based on the sign, calculate the input voltage signal
