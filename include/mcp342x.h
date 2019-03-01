@@ -132,7 +132,7 @@ typedef enum MCP342xGeneralCall
     MCP342X_GC_CONVERSION = 0x08
 } mcp342x_general_call_t;
 
-typedef enum
+typedef enum MCP342xConvStatus
 {
     MCP342X_STATUS_OK,
     MCP342X_STATUS_UNDERFLOW,
@@ -257,10 +257,8 @@ class MCP342x
     mcp342x_info_t *GetInfoPtr(void);
 
   private:
-    double GetResult();
     mcp342x_address_t address;
     mcp342x_info_t *mcp342x_info;
-    double result;
 };
 
 } // namespace cm

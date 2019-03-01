@@ -280,16 +280,27 @@ esp_err_t MCP342x::StartNewConversion(mcp342x_channel_t in_channel)
     return mcp342x_start_new_conversion(this->mcp342x_info);
 }
 
+static const char* errmsg[] = {
+    "",
+    "underflow",
+    "overflow",
+    "i2c",
+    "in progress",
+    "timeout",
+};
+
 double MCP342x::Read(void)
 {
-    mcp342x_read_result(this->mcp342x_info, &this->result);
+    mcp342x_conversion_status_t err;
+    double result;
 
-    return this->GetResult();
-}
+    err = mcp342x_read_result(this->mcp342x_info, &result);
+    if (err != MCP342xConvStatus::MCP342X_STATUS_OK)
+    {
+        ESP_LOGW(TAG, "%s", errmsg[err]);
+    }
 
-double MCP342x::GetResult(void)
-{
-    return this->result;
+    return result;
 }
 
 mcp342x_address_t MCP342x::GetAddress(void)
