@@ -143,15 +143,15 @@ esp_err_t mcp342x_start_new_conversion(const mcp342x_info_t *mcp342x_info_ptr)
 mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_info_ptr, double *result)
 {
     int32_t i32;
-    uint8_t buffer[4] = {};
+    uint8_t buffer[5] = {};
 
     do
     {
-        smbus_i2c_read_block(mcp342x_info_ptr->smbus_info, mcp342x_info_ptr->config, buffer, 4);
+        smbus_i2c_read_block(mcp342x_info_ptr->smbus_info, mcp342x_info_ptr->config, buffer, 5);
         ESP_LOGV(TAG, "%02x %02x %02x %02x", buffer[0], buffer[1], buffer[2], buffer[3]);
     } while ((buffer[3] & MCP342X_CNTRL_MASK) == MCP342X_CNTRL_RESULT_NOT_UPDATED);
 
-    ESP_LOGI(TAG, "Conversion Completed");
+    ESP_LOGI(TAG, "Done: %02x %02x %02x | %02x %02x",buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
 
     /**
      * Choose the LSB voltage value and discard repeated MSB
