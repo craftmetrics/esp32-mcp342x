@@ -151,7 +151,7 @@ mcp342x_conversion_status_t mcp342x_read_result(const mcp342x_info_t *mcp342x_in
         ESP_LOGV(TAG, "%02x %02x %02x %02x", buffer[0], buffer[1], buffer[2], buffer[3]);
     } while ((buffer[3] & MCP342X_CNTRL_MASK) == MCP342X_CNTRL_RESULT_NOT_UPDATED);
 
-    ESP_LOGD(TAG, "Conversion done");
+    ESP_LOGI(TAG, "Conversion done");
     ESP_LOGD(TAG, "Buffer: %02x %02x %02x | %02x %02x",buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
 
     /**
@@ -246,6 +246,7 @@ MCP342x::~MCP342x()
 
 esp_err_t MCP342x::Init(i2c_port_t in_i2c_master, mcp342x_config_t in_config)
 {
+    ESP_LOGI(TAG, "Initialize MCP342x device");
     smbus_info_t *smbus_info = smbus_malloc();
     smbus_init(smbus_info, in_i2c_master, this->address);
     smbus_set_timeout(smbus_info, 1000 / portTICK_RATE_MS);
@@ -259,6 +260,7 @@ esp_err_t MCP342x::Init(i2c_port_t in_i2c_master, mcp342x_config_t in_config)
 
 esp_err_t MCP342x::GeneralCall(mcp342x_general_call_t call)
 {
+    ESP_LOGI(TAG, "General call %02x", call);
     return mcp342x_general_call(this->mcp342x_info, call);
 }
 
@@ -277,7 +279,11 @@ esp_err_t MCP342x::StartNewConversion(mcp342x_channel_t in_channel)
     /**
      * Swap out the channel bits by first zeroing and then OR with new channel
      */
-    this->mcp342x_info->config = ((this->mcp342x_info->config & ~MCP342X_CHANNEL_MASK) | (in_channel & MCP342X_CHANNEL_MASK));
+    if ((this->mcp342x_info->config & MCP342X_CHANNEL_MASK) != in_channel)
+    {
+        ESP_LOGI(TAG, "Channel swap: %02x -> %02x", (this->mcp342x_info->config & MCP342X_CHANNEL_MASK), in_channel);    
+        this->mcp342x_info->config = ((this->mcp342x_info->config & ~MCP342X_CHANNEL_MASK) | (in_channel & MCP342X_CHANNEL_MASK));
+    }
     return mcp342x_start_new_conversion(this->mcp342x_info);
 }
 
