@@ -100,13 +100,17 @@ esp_err_t mcp342x_init(mcp342x_info_t *mcp342x_info_ptr, smbus_info_t *smbus_inf
         mcp342x_info_ptr->init = true;
 
         ESP_LOGD(TAG, "init mcp342x_info_t %p", mcp342x_info_ptr);
+        ESP_LOGD(TAG, "config.conversion_mode = 0x%02x", in_config.conversion_mode);
+        ESP_LOGD(TAG, "config.channel = 0x%02x", in_config.channel);
+        ESP_LOGD(TAG, "config.gain = 0x%02x", in_config.gain);
+        ESP_LOGD(TAG, "config.sample_rate = 0x%02x", in_config.sample_rate);
         mcp342x_info_ptr->smbus_info = smbus_info_ptr;
-        mcp342x_info_ptr->config = (in_config.conversion_mode |
-                                    in_config.channel |
-                                    in_config.gain |
-                                    in_config.sample_rate);
+        mcp342x_info_ptr->config = ((in_config.conversion_mode & MCP342X_MODE_MASK) |
+                                    (in_config.channel & MCP342X_CHANNEL_MASK) |
+                                    (in_config.gain & MCP342X_GAIN_MASK) |
+                                    (in_config.sample_rate & MCP342X_SRATE_MASK));
         // Test connection
-        ESP_LOGD(TAG, "send mcp342x_info config %p", &mcp342x_info_ptr->config);
+        ESP_LOGD(TAG, "send mcp342x_info config 0x%02x", mcp342x_info_ptr->config);
         err = smbus_send_byte(smbus_info_ptr, mcp342x_info_ptr->config);
     }
     else
